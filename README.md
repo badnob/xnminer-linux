@@ -123,7 +123,7 @@ This is the “keep the card full when difficulty dips” path — not a fixed s
 
 ### One-liner (Ubuntu / Debian)
 
-Installs Python, pip, cmake, NVIDIA driver (if needed), CUDA toolkit, requirements, and builds the CUDA engine:
+Installs in a safe order: **Python/pip/cmake → NVIDIA driver → CUDA toolkit only → venv requirements → build engine**:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/badnob/xnminer-linux/main/install.sh | bash
@@ -133,10 +133,11 @@ Then:
 
 ```bash
 cd xnminer-linux
+source .venv/bin/activate
 ./start-miner.sh
 ```
 
-> Reboot if a new NVIDIA driver was installed, then run `./install.sh --no-driver` if the engine build was skipped.
+> Reboot if a new NVIDIA driver was installed, then run `./install.sh --no-driver` if the engine build was skipped. See **HOWTO.md** for the full install order.
 
 ### Manual steps
 

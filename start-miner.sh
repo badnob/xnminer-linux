@@ -6,6 +6,25 @@ set -euo pipefail
 MINER_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${MINER_ROOT}"
 
+# Prefer install.sh venv and CUDA toolkit paths
+if [[ -f /etc/profile.d/xnminer-cuda.sh ]]; then
+  # shellcheck disable=SC1091
+  source /etc/profile.d/xnminer-cuda.sh
+fi
+if [[ -d /usr/local/cuda/bin ]]; then
+  export PATH="/usr/local/cuda/bin${PATH:+:$PATH}"
+fi
+if [[ -d /usr/local/cuda/lib64 ]]; then
+  export LD_LIBRARY_PATH="/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+
+PYTHON=(python3)
+if [[ -x "${MINER_ROOT}/.venv/bin/python" ]]; then
+  # shellcheck disable=SC1091
+  source "${MINER_ROOT}/.venv/bin/activate"
+  PYTHON=("${MINER_ROOT}/.venv/bin/python")
+fi
+
 read_ini() {
   local section="$1" key="$2" path="$3"
   local in_section=0
@@ -47,18 +66,25 @@ BACKEND="${BACKEND:-cuda}"
 CUDA_LIB="$(read_ini cuda dll_path "${CONFIG_PATH}" || true)"
 CUDA_LIB="${CUDA_LIB:-native/build/bin/libxen_cuda.so}"
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "ERROR: python3 not found. Install Python 3.10+ and retry." >&2
+if ! command -v "${PYTHON[0]}" >/dev/null 2>&1 && [[ ! -x "${PYTHON[0]}" ]]; then
+  echo "ERROR: python3 not found. Run ./install.sh or install Python 3.10+." >&2
   exit 1
 fi
 
-PY_VERSION="$(python3 --version 2>&1)"
+PY_VERSION="$("${PYTHON[@]}" --version 2>&1)"
 
-# Install deps if missing
+# Install deps into venv if missing (never silent-fail on system pip)
 if [[ -f "${MINER_ROOT}/requirements.txt" ]]; then
-  if ! python3 -c "import argon2, pynvml, psutil, rich" 2>/dev/null; then
-    echo "Installing Python packages (one-time)..."
-    python3 -m pip install -r "${MINER_ROOT}/requirements.txt"
+  if ! "${PYTHON[@]}" -c "import argon2, pynvml, psutil, rich" 2>/dev/null; then
+    echo "Installing Python packages into environment..."
+    if [[ ! -d "${MINER_ROOT}/.venv" ]]; then
+      python3 -m venv "${MINER_ROOT}/.venv"
+      # shellcheck disable=SC1091
+      source "${MINER_ROOT}/.venv/bin/activate"
+      PYTHON=("${MINER_ROOT}/.venv/bin/python")
+    fi
+    "${PYTHON[@]}" -m pip install --upgrade pip
+    "${PYTHON[@]}" -m pip install -r "${MINER_ROOT}/requirements.txt"
   fi
 fi
 
@@ -97,7 +123,7 @@ echo "Starting... (Ctrl+C to stop)  log: data/session.log"
 echo
 
 set +e
-python3 "${MAIN_PY}"
+"${PYTHON[@]}" "${MAIN_PY}"
 EXIT_CODE=$?
 set -e
 

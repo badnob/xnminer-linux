@@ -8,8 +8,6 @@ This tree is the **Linux port** of xnminer (`xnminer-linux`). It is separate fro
 
 ## One-liner install (Ubuntu / Debian)
 
-Clones the repo (if needed), installs **Python 3 + pip + venv**, **cmake**, **build tools**, **NVIDIA driver** (if missing), **CUDA toolkit** (`nvcc`), **pip requirements**, and builds **`libxen_cuda.so`**.
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/badnob/xnminer-linux/main/install.sh | bash
 ```
@@ -21,6 +19,19 @@ cd xnminer-linux
 chmod +x install.sh
 ./install.sh
 ```
+
+### Install order (fixed to avoid conflicts)
+
+`install.sh` always does steps in this sequence:
+
+| Step | What | Why this order |
+|------|------|----------------|
+| 1 | Base apt tools | Network/certs/git first |
+| 2 | **Python 3.10+**, pip, venv, **cmake**, g++ | Build/runtime tools before GPU stack |
+| 3 | **NVIDIA driver** (`ubuntu-drivers`) | Driver first; needs kernel headers |
+| 4 | **CUDA toolkit only** (`cuda-toolkit` or `nvidia-cuda-toolkit`) | Toolkit only — **not** the full `cuda` meta package (that would reinstall drivers and conflict) |
+| 5 | **`.venv` + `requirements.txt`** | Isolated pip; never system site-packages |
+| 6 | **`./native/build.sh`** → `libxen_cuda.so` | Needs cmake + nvcc last |
 
 Useful flags:
 
@@ -35,11 +46,12 @@ After a **new driver install**, reboot, then:
 
 ```bash
 cd xnminer-linux
-./install.sh --no-driver
+source .venv/bin/activate
+./install.sh --no-driver    # finish engine build if it was skipped
 ./start-miner.sh
 ```
 
-> Drivers and CUDA come from **distro packages** (`ubuntu-drivers`, `nvidia-cuda-toolkit`). Very new GPUs may need NVIDIA’s official CUDA network install instead.
+> CUDA network repo is tried first (`cuda-toolkit`). If that fails, falls back to distro `nvidia-cuda-toolkit`. Do not install the meta package named `cuda` alongside `ubuntu-drivers`.
 
 ---
 
