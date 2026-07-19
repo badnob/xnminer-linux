@@ -1,11 +1,15 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from config.wallet_setup import (
     _ensure_worker_id,
+    apply_worker_name,
+    ensure_wallet_configured,
     generate_random_miner_name,
     is_placeholder_miner_name,
+    is_valid_worker_name,
 )
 
 
@@ -67,6 +71,98 @@ class MinerNameTests(unittest.TestCase):
             self.assertEqual(_ensure_worker_id(ini), "MyRig-Alpha")
             text = ini.read_text(encoding="utf-8")
             self.assertIn("worker = MyRig-Alpha", text)
+
+    def test_valid_worker_name(self) -> None:
+        self.assertTrue(is_valid_worker_name("MyRig-01"))
+        self.assertTrue(is_valid_worker_name("Tony.x1"))
+        self.assertFalse(is_valid_worker_name(""))
+        self.assertFalse(is_valid_worker_name("miner1"))
+        self.assertFalse(is_valid_worker_name("bad/name"))
+
+    def test_apply_worker_custom_and_auto(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ini = Path(tmp) / "miner.ini"
+            ini.write_text(
+                "[account]\nworker =\n\n[monitoring]\nwoodyminer_custom_name =\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(apply_worker_name(ini, "Rig-A"), "Rig-A")
+            text = ini.read_text(encoding="utf-8")
+            self.assertIn("worker = Rig-A", text)
+            self.assertIn("woodyminer_custom_name = Rig-A", text)
+
+            ini.write_text(
+                "[account]\nworker =\n\n[monitoring]\nwoodyminer_custom_name =\n",
+                encoding="utf-8",
+            )
+            auto = apply_worker_name(ini, None)
+            self.assertTrue(auto.startswith("xnminer-"))
+
+    def test_first_run_prompts_worker_empty_means_auto(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ini = Path(tmp) / "miner.ini"
+            ini.write_text(
+                "\n".join(
+                    [
+                        "[account]",
+                        "address =",
+                        "worker =",
+                        "",
+                        "[monitoring]",
+                        "woodyminer_custom_name =",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            with (
+                patch("config.wallet_setup.sys.stdin.isatty", return_value=True),
+                patch(
+                    "config.wallet_setup.prompt_for_wallet",
+                    return_value="0x1234567890abcdef1234567890abcdef12345678",
+                ),
+                patch("config.wallet_setup.prompt_for_worker_name", return_value=None),
+            ):
+                ensure_wallet_configured(ini, interactive=True)
+            text = ini.read_text(encoding="utf-8")
+            self.assertIn(
+                "address = 0x1234567890abcdef1234567890abcdef12345678", text
+            )
+            # Auto name written
+            self.assertRegex(text, r"worker = xnminer-[0-9a-f]{8}")
+
+    def test_first_run_prompts_worker_custom(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ini = Path(tmp) / "miner.ini"
+            ini.write_text(
+                "\n".join(
+                    [
+                        "[account]",
+                        "address =",
+                        "worker =",
+                        "",
+                        "[monitoring]",
+                        "woodyminer_custom_name =",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            with (
+                patch("config.wallet_setup.sys.stdin.isatty", return_value=True),
+                patch(
+                    "config.wallet_setup.prompt_for_wallet",
+                    return_value="0x1234567890abcdef1234567890abcdef12345678",
+                ),
+                patch(
+                    "config.wallet_setup.prompt_for_worker_name",
+                    return_value="Desk-Rig-1",
+                ),
+            ):
+                ensure_wallet_configured(ini, interactive=True)
+            text = ini.read_text(encoding="utf-8")
+            self.assertIn("worker = Desk-Rig-1", text)
+            self.assertIn("woodyminer_custom_name = Desk-Rig-1", text)
 
 
 if __name__ == "__main__":

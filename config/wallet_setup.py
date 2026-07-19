@@ -253,6 +253,19 @@ def _ensure_worker_id(ini_path: Path) -> str:
     return name
 
 
+_WORKER_NAME_RE = re.compile(r"^[\w .\-@#+]{1,64}$", re.UNICODE)
+
+
+def is_valid_worker_name(name: str) -> bool:
+    """True if name is a usable custom worker label (not empty / placeholder)."""
+    value = name.strip()
+    if not value or is_placeholder_miner_name(value):
+        return False
+    if len(value) > 64:
+        return False
+    return bool(_WORKER_NAME_RE.match(value))
+
+
 def prompt_for_wallet() -> str:
     print()
     print("=" * 40)
@@ -278,12 +291,67 @@ def prompt_for_wallet() -> str:
         print()
 
 
+def prompt_for_worker_name() -> str | None:
+    """Ask for a worker / miner display name.
+
+    Returns a custom name, or ``None`` when the user leaves it empty so a
+    unique ``xnminer-xxxxxxxx`` name is generated.
+    """
+    print()
+    print("Worker / miner name (shown on Woodyminer / XenBlockScan).")
+    print("Leave empty to auto-generate a unique name (e.g. xnminer-a1b2c3d4).")
+    print()
+
+    while True:
+        try:
+            raw = input("Worker name [auto]: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            raise SystemExit("Worker name setup cancelled.")
+
+        if not raw:
+            return None
+
+        if is_placeholder_miner_name(raw):
+            print(
+                f'  "{raw}" is too generic and would clash with other miners. '
+                "Pick something unique, or leave empty for auto."
+            )
+            print()
+            continue
+
+        if len(raw) > 64:
+            print("  Name is too long (max 64 characters).")
+            print()
+            continue
+
+        if not _WORKER_NAME_RE.match(raw):
+            print(
+                "  Use letters, numbers, spaces, and . _ - @ # + only "
+                "(max 64 characters)."
+            )
+            print()
+            continue
+
+        return raw
+
+
+def apply_worker_name(ini_path: Path, worker: str | None) -> str:
+    """Persist a custom worker name, or generate a unique one if ``worker`` is None."""
+    if worker and is_valid_worker_name(worker):
+        name = worker.strip()
+        _set_ini_value(ini_path, "account", "worker", name)
+        _set_ini_value(ini_path, "monitoring", "woodyminer_custom_name", name)
+        return name
+    return _ensure_worker_id(ini_path)
+
+
 def ensure_wallet_configured(
     ini_path: Path | None = None,
     *,
     interactive: bool = True,
 ) -> Path:
-    """Ensure miner.ini exists and has a valid wallet address."""
+    """Ensure miner.ini exists and has a valid wallet address (+ worker name)."""
     path = ensure_miner_ini_exists(ini_path or DEFAULT_INI)
 
     import configparser
@@ -291,12 +359,25 @@ def ensure_wallet_configured(
     cp = configparser.ConfigParser()
     cp.read(path, encoding="utf-8")
     address = cp.get("account", "address", fallback="").strip()
+    worker_existing = cp.get("account", "worker", fallback="").strip()
+    can_prompt = interactive and sys.stdin.isatty()
 
     if not needs_wallet_setup(address):
-        _ensure_worker_id(path)
+        # Wallet already set — only prompt for worker if still empty/placeholder.
+        if can_prompt and is_placeholder_miner_name(worker_existing):
+            chosen = prompt_for_worker_name()
+            miner_name = apply_worker_name(path, chosen)
+            print()
+            if chosen:
+                print(f"Worker name saved: {miner_name}")
+            else:
+                print(f"Worker name auto-generated: {miner_name}")
+            print()
+        else:
+            _ensure_worker_id(path)
         return path
 
-    if not interactive or not sys.stdin.isatty():
+    if not can_prompt:
         print(
             "ERROR: Wallet not configured. Set [account] address in miner.ini "
             "or run the miner interactively once to enter it.",
@@ -305,11 +386,18 @@ def ensure_wallet_configured(
         raise SystemExit(1)
 
     address = prompt_for_wallet()
-    save_wallet_to_ini(path, address)
-    miner_name = _ensure_worker_id(path)
+    chosen = prompt_for_worker_name()
+    save_wallet_to_ini(path, address, worker=chosen if chosen else None)
+    miner_name = apply_worker_name(path, chosen)
     print()
     print(f"Wallet saved to {path}")
-    print(f"Miner name: {miner_name}  (unique for this install; edit miner.ini to change)")
+    if chosen:
+        print(f"Worker name: {miner_name}")
+    else:
+        print(
+            f"Worker name: {miner_name}  "
+            "(auto-generated; edit miner.ini to change)"
+        )
     print("You can edit miner.ini later to change wallet, worker name, or backend.")
     print()
     return path

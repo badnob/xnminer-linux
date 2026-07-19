@@ -1,8 +1,8 @@
 [account]
 # Leave empty to be prompted on first run; or set your 0x wallet here
 address =
-# Leave empty — a unique name like xnminer-a1b2c3d4 is generated on first run
-# (avoids Woodyminer / XenBlockScan clashes when everyone used "miner1")
+# Leave empty on first run to be prompted, or type Enter for auto
+# xnminer-a1b2c3d4. Or set a custom name here anytime.
 worker =
 
 [server]
