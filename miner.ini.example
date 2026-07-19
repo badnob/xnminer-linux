@@ -1,0 +1,94 @@
+[account]
+# Leave empty to be prompted on first run; or set your 0x wallet here
+address =
+# Leave empty — a unique name like xnminer-a1b2c3d4 is generated on first run
+# (avoids Woodyminer / XenBlockScan clashes when everyone used "miner1")
+worker =
+
+[server]
+base_url = http://xenblocks.io
+connection_timeout_s = 20
+network_poll_interval_s = 15
+network_poll_timeout_s = 3
+network_down_poll_interval_s = 30
+
+[mining]
+# cuda = native GPU | cpu = no NVIDIA | gpu = legacy xenblocks binary bridge
+backend = cuda
+strategy = random
+memory_cost = 1100
+time_cost = 1
+parallelism = 1
+hash_len = 64
+
+[efficiency]
+# VRAM safety as % of EACH GPU's total (auto-scales for all card sizes)
+target_vram_pct = 69.09
+desktop_headroom_pct = 25.12
+emergency_vram_pct = 92.78
+min_headroom_pct = 3.68
+runtime_overhead_pct = 6.28
+min_headroom_floor_mib = 512
+runtime_overhead_floor_mib = 256
+# Absolute MiB overrides (0 = use percentages only)
+target_vram_mib = 0
+headroom_mib = 0
+emergency_vram_mib = 0
+min_headroom_mib = 0
+max_gpu_temp_c = 75
+warn_gpu_temp_c = 72
+gpu_cooldown_s = 60
+gpu_power_boost_enabled = true
+gpu_power_target_pct = 100
+# Windows-only powercfg High Performance plan (ignored on Linux)
+gpu_windows_performance_mode = false
+cpu_lanes = 2
+lane_ramp_step = 1
+sample_interval_s = 5
+
+[queue]
+db_path = data/blocks.db
+jsonl_path = data/queue.jsonl
+rejected_jsonl_path = data/rejected.jsonl
+submit_cpu_fraction = 0.30
+
+[monitoring]
+log_path = data/session.log
+timelapse_path = data/session_timelapse.jsonl
+stats_interval_s = 4
+timelapse_sample_s = 30
+temp_watch_path = data/temp_watch.log
+dashboard_enabled = true
+woodyminer_enabled = true
+woodyminer_upload_url = https://woodyminer.com/api/stat/upload
+woodyminer_upload_period_s = 60
+# Shown on woodyminer.com leaderboard. Leave empty for auto unique name
+# (same as worker on first run). Set your own label anytime.
+woodyminer_custom_name =
+# Share accepts + holdings with XenBlockScan (http://127.0.0.1:8787 by default)
+xenblockscan_enabled = false
+xenblockscan_endpoint = http://127.0.0.1:8787/api/v1/events
+xenblockscan_api_key =
+xenblockscan_report_rejects = false
+# How often to push live hashrate + balances to the site (seconds)
+xenblockscan_holdings_interval_s = 30
+# Optional deferred history only; default off so mining never waits on the site
+xenblockscan_backfill = false
+# Unique fleet tracker id for this machine (auto-generated if empty)
+tracker_id =
+
+[gpu]
+# Only used if backend = gpu (legacy). Leave empty for cuda/cpu.
+xenblocks_exe =
+xenblocks_db =
+enabled = false
+
+[cuda]
+# Linux shared library produced by native/build.sh
+dll_path = native/build/bin/libxen_cuda.so
+batch_size = 0
+max_batch_size = 0
+max_lanes = 4
+lane_reserve = 1
+# 0 = use efficiency.runtime_overhead_pct of GPU total
+runtime_overhead_mib = 0

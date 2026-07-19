@@ -1,0 +1,4 @@
+argon2-cffi>=23.1.0
+nvidia-ml-py>=12.535.133
+psutil>=5.9.0
+rich>=13.7.0

@@ -1,0 +1,15 @@
+{
+  "name": "main",
+  "version-string": "latest",
+  "dependencies": [
+    "boost-program-options",
+    "argon2",
+    "cryptopp",
+    "cpr",
+    "nlohmann-json",
+    "openssl",
+    "secp256k1",
+    "crow",
+    "paho-mqttpp3"
+  ]
+}
