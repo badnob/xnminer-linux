@@ -121,7 +121,26 @@ This is the “keep the card full when difficulty dips” path — not a fixed s
 
 **Full walkthrough:** **[HOWTO.md](HOWTO.md)**
 
-1. Install **Python 3.10+**, **NVIDIA drivers**, and (for CUDA) **CUDA Toolkit + cmake**.  
+### One-liner (Ubuntu / Debian)
+
+Installs Python, pip, cmake, NVIDIA driver (if needed), CUDA toolkit, requirements, and builds the CUDA engine:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/badnob/xnminer-linux/main/install.sh | bash
+```
+
+Then:
+
+```bash
+cd xnminer-linux
+./start-miner.sh
+```
+
+> Reboot if a new NVIDIA driver was installed, then run `./install.sh --no-driver` if the engine build was skipped.
+
+### Manual steps
+
+1. Install **Python 3.10+**, **NVIDIA drivers**, and (for CUDA) **CUDA Toolkit + cmake** (or use `./install.sh`).  
 2. Copy or clone this tree onto the Linux machine.  
 3. Build the engine: **`./native/build.sh`**.  
 4. Run **`./start-miner.sh`**.  
@@ -200,6 +219,7 @@ Output: `native/build/bin/libxen_cuda.so`
 ```text
 ├── main.py                 # Entry point
 ├── miner.ini               # Config
+├── install.sh              # One-shot host setup (apt + CUDA + deps)
 ├── start-miner.sh          # Linux launcher
 ├── core/                   # Supervisor, models, instance lock
 ├── mining/                 # CUDA / CPU backends, block types, Argon2
